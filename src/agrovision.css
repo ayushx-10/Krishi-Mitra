@@ -1086,3 +1086,289 @@ input, select { font-family: inherit; }
   color: var(--accent-lime);
 }
 
+/* ============================================================
+   IRRIGATION MODAL & INADEQUATE DATA NOTICE
+   ============================================================ */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(4, 12, 7, 0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-title h3 {
+  font-size: 15px;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.modal-title small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.modal-close-btn:hover { color: #ffffff; }
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.modal-preset-btn {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.modal-preset-btn:hover {
+  border-color: var(--accent-green);
+  background: var(--bg-elevated);
+}
+
+.modal-preset-btn.selected {
+  border-color: var(--accent-lime);
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.modal-preset-btn.warning {
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.modal-preset-btn.warning.selected {
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.12);
+}
+
+.modal-preset-btn strong { font-size: 12px; font-weight: 600; }
+.modal-preset-btn small { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.modal-warning-box {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: var(--text-primary);
+}
+
+.modal-warning-box strong { font-size: 12px; color: #eab308; display: block; margin-bottom: 2px; }
+.modal-warning-box p { font-size: 11px; color: var(--text-secondary); margin: 0; line-height: 1.4; }
+
+.modal-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-irrigate-today {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.3) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.btn-irrigate-today:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(37, 99, 235, 0.45) 100%);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   MAXIMUM PROFIT CROP RECOMMENDATION CARD
+   ============================================================ */
+.max-profit-card {
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.max-profit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.max-profit-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.max-profit-title h3 {
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.max-profit-title small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.profit-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 16px;
+}
+
+.profit-crops-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profit-crop-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s var(--ease);
+}
+
+.profit-crop-item.rank-1 {
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.crop-rank-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-lime);
+  font: 700 12px var(--font-mono);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.rank-1 .crop-rank-badge {
+  background: var(--accent-lime);
+  color: #08170c;
+}
+
+.profit-crop-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.crop-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.crop-name-row strong {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.profit-amount-tag {
+  font: 700 13px var(--font-mono);
+  color: var(--accent-green);
+  background: rgba(34, 197, 94, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.profit-meta-pills {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.match-score {
+  color: var(--accent-lime);
+  font-weight: 600;
+}
+
+.crop-rationale {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+

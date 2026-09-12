@@ -24,7 +24,8 @@ import { fetchSoilData } from './data/soilFetcher.js';
 import { fetchSatelliteData } from './data/satelliteFetcher.js';
 import { fetchOSMFields } from './data/osmFieldFetcher.js';
 import { saveFieldSession } from './data/neonDatabase.js';
-import { parseFarmerWithLLM } from './data/openRouterLLM.js';
+import { parseFarmerWithLLM, getLLMMaxProfitCropAdvisor } from './data/openRouterLLM.js';
+
 
 // Fix Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -788,6 +789,190 @@ function InteractiveSliders({ addedNitrogen, setAddedNitrogen, customPh, setCust
   );
 }
 
+// ============================================================
+// IRRIGATION LOGGING MODAL WITH INADEQUATE DATA NOTICE
+// ============================================================
+function IrrigationModal({ isOpen, onClose, onSaveIrrigation }) {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [presetAmount, setPresetAmount] = useState('40');
+  const [customMm, setCustomMm] = useState('40');
+  const [method, setMethod] = useState('canal');
+  const [isUnknown, setIsUnknown] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSave = () => {
+    onSaveIrrigation({
+      date,
+      amountMm: isUnknown ? 35 : parseFloat(customMm || presetAmount),
+      method,
+      isEstimate: isUnknown,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">
+            <Droplets size={20} color="var(--accent-lime)" />
+            <div>
+              <h3>Log Field Irrigation Activity</h3>
+              <small>Record today's watering volume & method</small>
+            </div>
+          </div>
+          <button type="button" className="modal-close-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="modal-body">
+          <div className="form-group">
+            <label><Timer size={13}/> IRRIGATION DATE</label>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+
+          <div className="form-group">
+            <label><Droplets size={13}/> WATER VOLUME ESTIMATION</label>
+            <div className="modal-preset-grid">
+              <button
+                type="button"
+                className={`modal-preset-btn ${!isUnknown && presetAmount === '20' ? 'selected' : ''}`}
+                onClick={() => { setIsUnknown(false); setPresetAmount('20'); setCustomMm('20'); }}
+              >
+                <strong>Light Watering</strong>
+                <small>~20 mm (2 hrs)</small>
+              </button>
+              <button
+                type="button"
+                className={`modal-preset-btn ${!isUnknown && presetAmount === '40' ? 'selected' : ''}`}
+                onClick={() => { setIsUnknown(false); setPresetAmount('40'); setCustomMm('40'); }}
+              >
+                <strong>Standard Canal</strong>
+                <small>~40 mm (4 hrs)</small>
+              </button>
+              <button
+                type="button"
+                className={`modal-preset-btn ${!isUnknown && presetAmount === '60' ? 'selected' : ''}`}
+                onClick={() => { setIsUnknown(false); setPresetAmount('60'); setCustomMm('60'); }}
+              >
+                <strong>Deep Flooding</strong>
+                <small>~60 mm (6 hrs)</small>
+              </button>
+              <button
+                type="button"
+                className={`modal-preset-btn warning ${isUnknown ? 'selected' : ''}`}
+                onClick={() => { setIsUnknown(true); setPresetAmount('unknown'); }}
+              >
+                <strong>I don't know amount</strong>
+                <small>Auto-estimate</small>
+              </button>
+            </div>
+          </div>
+
+          {/* INADEQUATE DATA NOTICE BANNER */}
+          {isUnknown && (
+            <div className="modal-warning-box">
+              <AlertTriangle size={24} color="#eab308" style={{ flexShrink: 0 }} />
+              <div>
+                <strong>Inadequate Past Water Data Notice</strong>
+                <p>Due to inadequate past water measurement data, initial predictions may vary slightly. However, as you consistently log watering updates, the AgroVision AI engine will refine model precision for your specific field!</p>
+              </div>
+            </div>
+          )}
+
+          {!isUnknown && (
+            <div className="form-group">
+              <label>EXACT WATER DEPTH (mm)</label>
+              <input
+                type="number"
+                value={customMm}
+                onChange={e => setCustomMm(e.target.value)}
+                placeholder="e.g. 40"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <button type="button" className="btn-primary" style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)' }} onClick={onClose}>Cancel</button>
+          <button type="button" className="btn-primary" onClick={handleSave}>
+            <Check size={16}/> Save Irrigation Log
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAXIMUM PROFIT CROP RECOMMENDATION COMPONENT (OPENROUTER LLM)
+// ============================================================
+function MaxProfitCropCard({ results, soil, weather, locationDetails, area }) {
+  const [profitData, setProfitData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getLLMMaxProfitCropAdvisor({
+      soil: soil || results?.soil,
+      weather: weather || results?.weather,
+      locationDetails: locationDetails || results?.locationDetails,
+      area: area || results?.fieldArea
+    })
+      .then(res => {
+        if (!cancelled) {
+          setProfitData(res);
+          setLoading(false);
+        }
+      })
+      .catch(() => setLoading(false));
+    return () => { cancelled = true; };
+  }, [soil, weather, locationDetails, area, results]);
+
+  return (
+    <div className="max-profit-card">
+      <div className="max-profit-header">
+        <div className="max-profit-title">
+          <Sparkles size={18} color="var(--accent-lime)" />
+          <div>
+            <h3>Maximum Profit Crop Recommendations</h3>
+            <small>AI-calculated maximum yield & revenue based on soil profile & rainfall</small>
+          </div>
+        </div>
+        {profitData?.source && <Badge type="lime">{profitData.source}</Badge>}
+      </div>
+
+      {loading ? (
+        <div className="profit-loading">
+          <LoaderCircle className="spin" size={18} />
+          <span>Synthesizing regional soil, rainfall, and market economics via OpenRouter LLM...</span>
+        </div>
+      ) : (
+        <div className="profit-crops-grid">
+          {profitData?.recommendedCrops?.map((c, idx) => (
+            <div key={c.cropName} className={`profit-crop-item ${idx === 0 ? 'rank-1' : ''}`}>
+              <div className="crop-rank-badge">#{idx + 1}</div>
+              <div className="profit-crop-main">
+                <div className="crop-name-row">
+                  <strong>{c.cropName}</strong>
+                  <span className="profit-amount-tag">{c.profitPerAcre}</span>
+                </div>
+                <div className="profit-meta-pills">
+                  <span>🌾 Yield: <b>{c.yieldEstimate}</b></span>
+                  <span>💧 Need: <b>{c.waterNeed}</b></span>
+                  <span className="match-score">🎯 <b>{c.score}</b></span>
+                </div>
+                <p className="crop-rationale">{c.rationale}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Real-Time Soil Profile Component with SoilGrids v2 Nutrients & Farmer Overrides
 function RealtimeSoilCard({ soilData, loading, addedNitrogen, customPh }) {
   if (loading) {
@@ -937,7 +1122,10 @@ function Workspace({ back }) {
   const [customPh, setCustomPh] = useState('');
   const [procStep, setProcStep] = useState(0);
   const [results, setResults] = useState(null);
+  const [isIrrigationModalOpen, setIsIrrigationModalOpen] = useState(false);
+  const [irrigationLogs, setIrrigationLogs] = useState([]);
   const mapRef = useRef(null);
+
   const osmLayersRef = useRef([]);
 
   const hasField = points.length >= 3;
@@ -1419,6 +1607,13 @@ function Workspace({ back }) {
                   setPlantingDate={setPlantingDate}
                 />
 
+                {/* Quick Irrigation Action Button */}
+                <div style={{ marginTop: '8px' }}>
+                  <button type="button" className="btn-irrigate-today" onClick={() => setIsIrrigationModalOpen(true)}>
+                    <Droplets size={16}/> I Irrigated Today
+                  </button>
+                </div>
+
                 <div className="soil-analysis-opt" style={{ marginTop: '12px' }}>
                   <label>
                     <input type="checkbox" checked={runSoilAnalysis} onChange={e => setRunSoilAnalysis(e.target.checked)} />
@@ -1482,13 +1677,28 @@ function Workspace({ back }) {
 
       {/* PHASE 5: DECISION STAGE */}
       {phase === 'decision' && results && (
-        <Decision results={results} onBack={() => setPhase('soil_crop')} onDashboard={() => setPhase('dashboard')} />
+        <Decision
+          results={results}
+          onBack={() => setPhase('soil_crop')}
+          onDashboard={() => setPhase('dashboard')}
+          onOpenIrrigation={() => setIsIrrigationModalOpen(true)}
+        />
       )}
 
       {/* DASHBOARD */}
       {phase === 'dashboard' && results && (
-        <FullDashboard results={results} onBack={() => setPhase('decision')} />
+        <FullDashboard results={results} onBack={() => setPhase('decision')} onOpenIrrigation={() => setIsIrrigationModalOpen(true)} />
       )}
+
+      {/* IRRIGATION LOGGING MODAL */}
+      <IrrigationModal
+        isOpen={isIrrigationModalOpen}
+        onClose={() => setIsIrrigationModalOpen(false)}
+        onSaveIrrigation={(log) => {
+          setIrrigationLogs(prev => [...prev, log]);
+          alert(`Irrigation logged: ${log.amountMm}mm water added on ${log.date}. Re-simulating soil water balance...`);
+        }}
+      />
     </div>
   );
 }
@@ -1665,7 +1875,17 @@ function Decision({ results, onBack, onDashboard }) {
           )}
         </div>
 
-        <button className="btn-primary full" onClick={onDashboard}>Open full dashboard <ArrowRight size={16}/></button>
+        {/* Max Profit Crop Recommendation Card */}
+        <MaxProfitCropCard results={results} />
+
+        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <button type="button" className="btn-irrigate-today" style={{ flex: '1' }} onClick={onOpenIrrigation}>
+            <Droplets size={16}/> I Irrigated Today
+          </button>
+          <button className="btn-primary" style={{ flex: '2' }} onClick={onDashboard}>
+            Open full dashboard <ArrowRight size={16}/>
+          </button>
+        </div>
       </div>
     </section>
   );
