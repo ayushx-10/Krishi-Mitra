@@ -195,6 +195,8 @@ function generateClimateFallback(lat, startDate) {
       date: current.toISOString().split('T')[0],
       precipitation: Math.round(dailyPrecip * precipVariation * 10) / 10,
       et0: Math.round(et0 * et0Variation * 10) / 10,
+      tempMax: Math.round(29 + Math.sin(dayOfYear / 58) * 6 + (Math.random() * 2 - 1)),
+      tempMin: Math.round(18 + Math.sin(dayOfYear / 58) * 5 + (Math.random() * 2 - 1)),
       isForecast: false,
     });
 
@@ -224,6 +226,8 @@ function generateForecastFallback(historicalData, forecastDays) {
       date: fDate.toISOString().split('T')[0],
       precipitation: 0,
       et0: Math.round(avgEt0 * 10) / 10,
+      tempMax: 31,
+      tempMin: 20,
       isForecast: true,
     });
   }

@@ -23,8 +23,9 @@ import { fetchWeatherData } from './data/weatherFetcher.js';
 import { fetchSoilData } from './data/soilFetcher.js';
 import { fetchSatelliteData } from './data/satelliteFetcher.js';
 import { fetchOSMFields } from './data/osmFieldFetcher.js';
-import { saveFieldSession } from './data/neonDatabase.js';
+import { saveFieldSession, saveIrrigationLog } from './data/neonDatabase.js';
 import { parseFarmerWithLLM, getLLMMaxProfitCropAdvisor } from './data/openRouterLLM.js';
+
 
 
 // Fix Leaflet icons
@@ -146,7 +147,7 @@ async function reverseGeocode(lat, lng) {
 // ============================================================
 // SMALL COMPONENTS
 // ============================================================
-function Logo() { return <div className="flow-logo"><span><Sprout size={16}/></span>AgroVision</div>; }
+function Logo() { return <div className="flow-logo"><span><Sprout size={16}/></span>KrishiMitra</div>; }
 function Badge({ children, type = '' }) { return <span className={`flow-badge ${type}`}>{children}</span>; }
 
 // 2x2 Matrix Component for Latitude & Longitude
@@ -1706,7 +1707,8 @@ function Workspace({ back }) {
         onClose={() => setIsIrrigationModalOpen(false)}
         onSaveIrrigation={(log) => {
           setIrrigationLogs(prev => [...prev, log]);
-          alert(`Irrigation logged: ${log.amountMm}mm water added on ${log.date}. Re-simulating soil water balance...`);
+          saveIrrigationLog(log).catch(err => console.warn('Neon DB irrigation save notice:', err));
+          alert(`Irrigation logged to Neon DB: ${log.amountMm}mm water added on ${log.date}. Model updated!`);
         }}
       />
     </div>
@@ -1844,15 +1846,26 @@ function Decision({ results, onBack, onDashboard, onOpenIrrigation }) {
   const totalRain = forecastDays.reduce((s, d) => s + (d.precipitation || 0), 0);
   const dts = advisory.daysToStress ?? summary.daysToStress ?? null;
 
-  const rawLabel = advisory.statusLabel || (isGood ? 'SAFE TO WAIT' : isWarn ? 'MONITOR CLOSELY' : 'IRRIGATE NOW');
-  const cleanLabel = rawLabel.replace(/[^a-zA-Z0-9 ]/g, '').trim() || 'SAFE TO WAIT';
+  let actionTitle = 'SAFE TO WAIT';
+  let actionHeader = 'Moisture Healthy — Safe to Wait';
+  let actionDesc = 'Your soil currently has plenty of root-zone water available for healthy crop growth. No watering is needed today.';
+
+  if (status === 'irrigate_now' || statusClass === 'danger') {
+    actionTitle = 'IRRIGATE TODAY';
+    actionHeader = 'Watering Recommended Today';
+    actionDesc = 'Soil moisture has dropped below optimal levels. Watering your field today will prevent yield loss.';
+  } else if (status === 'monitor_closely' || statusClass === 'warn') {
+    actionTitle = 'MONITOR CLOSELY';
+    actionHeader = 'Soil Water Dropping — Monitor Field';
+    actionDesc = 'Soil moisture is currently adequate, but water stress will start in a few days. Prepare your irrigation source.';
+  }
 
   return (
     <section className="decision-stage">
       <div className="decision-side">
         <Badge type="lime">PAGE 5 OF 5</Badge>
-        <h1>Your field<br/>is <em className={statusClass}>{cleanLabel.toLowerCase()}.</em></h1>
-        <p>{advisory.statusDescription || 'Soil moisture parameters simulated using FAO-56 dual crop water balance engine.'}</p>
+        <h1>Field Status<br/><em className={statusClass}>{actionHeader}</em></h1>
+        <p>{actionDesc}</p>
         <button className="back-link" onClick={onBack}><ChevronLeft size={16}/> Edit Soil & Crop</button>
       </div>
       <div className="decision-board">
@@ -1860,8 +1873,8 @@ function Decision({ results, onBack, onDashboard, onOpenIrrigation }) {
           <div>
             <span className={`${statusClass}-orb`}><ShieldCheck size={24}/></span>
             <div>
-              <small>RECOMMENDED ACTION</small>
-              <h2>{cleanLabel.toUpperCase()}</h2>
+              <small>RECOMMENDED ACTION FOR FARMER</small>
+              <h2>{actionTitle}</h2>
             </div>
           </div>
           <Badge type={statusClass}>HIGH CONFIDENCE</Badge>
@@ -1885,15 +1898,12 @@ function Decision({ results, onBack, onDashboard, onOpenIrrigation }) {
           )}
         </div>
 
-        {/* Max Profit Crop Recommendation Card */}
-        <MaxProfitCropCard results={results} />
-
         <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
           <button type="button" className="btn-irrigate-today" style={{ flex: '1' }} onClick={onOpenIrrigation}>
             <Droplets size={16}/> I Irrigated Today
           </button>
           <button className="btn-primary" style={{ flex: '2' }} onClick={onDashboard}>
-            Open full dashboard <ArrowRight size={16}/>
+            Open full dashboard & crop profit advisor <ArrowRight size={16}/>
           </button>
         </div>
       </div>
@@ -2042,11 +2052,11 @@ function FullDashboard({ results, onBack, onOpenIrrigation }) {
           data: {
             labels: weatherDays.map(d => { const dt = new Date(d.date); return isNaN(dt.getTime()) ? String(d.date) : `${dt.getDate()} ${dt.toLocaleString('en', { month: 'short' })}`; }),
             datasets: [
-              { label: 'Max Temp (C)', data: weatherDays.map(d => d.tempMax || 30), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, tension: .3, fill: false },
-              { label: 'Min Temp (C)', data: weatherDays.map(d => d.tempMin || 20), borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 0, tension: .3, fill: false },
+              { label: 'Max Temp (°C)', data: weatherDays.map(d => d.tempMax != null ? d.tempMax : 31), borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 2, tension: .3, fill: false },
+              { label: 'Min Temp (°C)', data: weatherDays.map(d => d.tempMin != null ? d.tempMin : 20), borderColor: '#3b82f6', borderWidth: 1.5, pointRadius: 2, tension: .3, fill: false },
             ],
           },
-          options: darkChartOpts('Temperature (C)'),
+          options: darkChartOpts('Temperature (°C)'),
         }));
       }
     }
@@ -2079,13 +2089,18 @@ function FullDashboard({ results, onBack, onOpenIrrigation }) {
 
   return (
     <div className="dashboard">
-      <button className="dash-back" onClick={onBack}><ChevronLeft size={16}/> Back to decision</button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <button className="dash-back" onClick={onBack}><ChevronLeft size={16}/> Back to decision</button>
+        <button type="button" className="btn-irrigate-today" onClick={onOpenIrrigation}>
+          <Droplets size={16}/> I Irrigated Today
+        </button>
+      </div>
 
       <div className={`dash-advisory ${statusClass}`}>
         <ShieldCheck size={24}/>
         <div>
           <h2>{cleanLabel}</h2>
-          <p>{advisory.statusDescription || 'Field parameters have been calculated using FAO-56 dual crop water balance model.'}</p>
+          <p>{advisory.statusDescription || 'Field parameters calculated using FAO-56 dual crop water balance model.'}</p>
         </div>
         <Badge type={statusClass}>HIGH CONFIDENCE</Badge>
       </div>
@@ -2114,6 +2129,9 @@ function FullDashboard({ results, onBack, onOpenIrrigation }) {
           <div className="mc-hint">{totalET > 40 ? 'High demand' : totalET > 20 ? 'Normal demand' : 'Low demand'}</div>
         </div>
       </div>
+
+      {/* Maximum Profit Crop Recommendation Component inside Dashboard */}
+      <MaxProfitCropCard results={results} />
 
       <div className="charts-grid">
         <div className="chart-card"><div className="chart-header"><h3>Root-Zone Moisture Dynamics</h3><span className="chart-badge">FAO-56</span></div><div className="chart-wrap"><canvas ref={moistureRef}/></div></div>

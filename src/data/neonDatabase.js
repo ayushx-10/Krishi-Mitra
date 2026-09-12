@@ -86,20 +86,31 @@ export async function saveFieldSession(data) {
 }
 
 /**
- * Fetch recent farmer sessions from Neon DB.
+ * Save an irrigation event log directly to Neon PostgreSQL DB.
  */
-export async function fetchRecentFieldSessions(limit = 5) {
-  if (!sql) return [];
+export async function saveIrrigationLog(logData) {
+  if (!sql) return false;
   try {
-    const rows = await sql`
-      SELECT id, farmer_name, location_name, latitude, longitude, crop_id, field_type, added_nitrogen, soil_ph, advisory_status, created_at
-      FROM farmer_sessions
-      ORDER BY created_at DESC
-      LIMIT ${limit};
+    await sql`
+      CREATE TABLE IF NOT EXISTS irrigation_logs (
+        id SERIAL PRIMARY KEY,
+        log_date VARCHAR(50),
+        amount_mm NUMERIC(8,2),
+        method VARCHAR(50),
+        is_estimate BOOLEAN,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `;
-    return rows;
+    const res = await sql`
+      INSERT INTO irrigation_logs (log_date, amount_mm, method, is_estimate)
+      VALUES (${logData.date}, ${logData.amountMm}, ${logData.method || 'canal'}, ${logData.isEstimate || false})
+      RETURNING id;
+    `;
+    console.log('Irrigation log saved to Neon DB successfully. Record ID:', res[0]?.id);
+    return res[0]?.id;
   } catch (err) {
-    console.warn('Neon DB fetch sessions notice:', err.message);
-    return [];
+    console.warn('Neon DB irrigation log notice:', err.message);
+    return false;
   }
 }
+
