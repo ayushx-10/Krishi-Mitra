@@ -1,12 +1,13 @@
 # AgroVision (Krishi-Mitra) — Next-Gen Field Intelligence & Irrigation AI
 
-### 🌐 Live Production Deployment
-> 🚀 **Live App URL:** [https://temporary-rushing-poplar-1u51d6j.vercel.app](https://temporary-rushing-poplar-1u51d6j.vercel.app)
+> ### 🚀 LIVE APPLICATION URL:
+> ## 🌐 [https://temporary-rushing-poplar-1u51d6j.vercel.app](https://temporary-rushing-poplar-1u51d6j.vercel.app)
 
 [![Vercel Deployment](https://img.shields.io/badge/Vercel-Live--Demo-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://temporary-rushing-poplar-1u51d6j.vercel.app)
 [![Tech Stack](https://img.shields.io/badge/Stack-React_18_%7C_Vite_%7C_Leaflet-61DAFB?style=for-the-badge&logo=react&logoColor=black)](#tech-stack)
 [![Database](https://img.shields.io/badge/Database-Neon_PostgreSQL-00E599?style=for-the-badge&logo=postgresql&logoColor=white)](#neon-database)
 [![AI Engine](https://img.shields.io/badge/AI Engine-OpenRouter_LLM-FF6467?style=for-the-badge&logo=openai&logoColor=white)](#farmer-ai-assistant)
+
 
 
 **AgroVision (Krishi-Mitra)** is an advanced field intelligence platform that combines **physics-based crop water balance models**, **ISRIC SoilGrids v2.0 soil nutrients**, **Open-Meteo satellite weather signals**, and **OpenRouter LLM AI assistance** to help farmers make precision irrigation decisions.
