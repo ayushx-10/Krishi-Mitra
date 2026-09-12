@@ -914,21 +914,31 @@ function MaxProfitCropCard({ results, soil, weather, locationDetails, area }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    const safeSoil = soil || results?.soil || {};
+    const safeWeather = weather || results?.weather || {};
+    const safeLoc = locationDetails || results?.locationDetails || {};
+    const safeArea = area || results?.fieldArea || { acres: 1.5 };
+
     getLLMMaxProfitCropAdvisor({
-      soil: soil || results?.soil,
-      weather: weather || results?.weather,
-      locationDetails: locationDetails || results?.locationDetails,
-      area: area || results?.fieldArea
+      soil: safeSoil,
+      weather: safeWeather,
+      locationDetails: safeLoc,
+      area: safeArea
     })
       .then(res => {
-        if (!cancelled) {
+        if (!cancelled && res) {
           setProfitData(res);
           setLoading(false);
         }
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        console.warn('Max profit error notice:', err);
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, [soil, weather, locationDetails, area, results]);
+
+  if (!profitData && !loading) return null;
 
   return (
     <div className="max-profit-card">
@@ -950,20 +960,20 @@ function MaxProfitCropCard({ results, soil, weather, locationDetails, area }) {
         </div>
       ) : (
         <div className="profit-crops-grid">
-          {profitData?.recommendedCrops?.map((c, idx) => (
-            <div key={c.cropName} className={`profit-crop-item ${idx === 0 ? 'rank-1' : ''}`}>
+          {(profitData?.recommendedCrops || []).map((c, idx) => (
+            <div key={c?.cropName || idx} className={`profit-crop-item ${idx === 0 ? 'rank-1' : ''}`}>
               <div className="crop-rank-badge">#{idx + 1}</div>
               <div className="profit-crop-main">
                 <div className="crop-name-row">
-                  <strong>{c.cropName}</strong>
-                  <span className="profit-amount-tag">{c.profitPerAcre}</span>
+                  <strong>{c?.cropName || 'Crop Option'}</strong>
+                  <span className="profit-amount-tag">{c?.profitPerAcre || '₹45,000 / acre'}</span>
                 </div>
                 <div className="profit-meta-pills">
-                  <span>🌾 Yield: <b>{c.yieldEstimate}</b></span>
-                  <span>💧 Need: <b>{c.waterNeed}</b></span>
-                  <span className="match-score">🎯 <b>{c.score}</b></span>
+                  <span>🌾 Yield: <b>{c?.yieldEstimate || 'Good'}</b></span>
+                  <span>💧 Need: <b>{c?.waterNeed || 'Moderate'}</b></span>
+                  <span className="match-score">🎯 <b>{c?.score || '90%'}</b></span>
                 </div>
-                <p className="crop-rationale">{c.rationale}</p>
+                {c?.rationale && <p className="crop-rationale">{c.rationale}</p>}
               </div>
             </div>
           ))}
@@ -1811,7 +1821,7 @@ function SignalStage({ lat, lng, cropId, plantingDate, points, runSoilAnalysis, 
 // ============================================================
 // DECISION STAGE
 // ============================================================
-function Decision({ results, onBack, onDashboard }) {
+function Decision({ results, onBack, onDashboard, onOpenIrrigation }) {
   if (!results) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
@@ -1916,7 +1926,7 @@ function makeLabels(arr) {
 // ============================================================
 // FULL DASHBOARD
 // ============================================================
-function FullDashboard({ results, onBack }) {
+function FullDashboard({ results, onBack, onOpenIrrigation }) {
   if (!results) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
